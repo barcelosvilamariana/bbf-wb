@@ -1,4 +1,4 @@
-import { authOptions } from "@/app/utils/authOptions";
+import { authOptions } from "@/app/lib/auth";
 import NextAuth from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
