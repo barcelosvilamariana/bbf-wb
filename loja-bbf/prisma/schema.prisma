@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  B2C
+  B2B
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  userType      UserType  @default(B2C)
+  
+  // B2C fields
+  cpf           String?   @unique
+  phone         String?
+  
+  // B2B fields
+  cnpj          String?   @unique
+  companyName   String?
+  stateRegistration String?
+  
+  // Address
+  street        String?
+  number        String?
+  complement    String?
+  neighborhood  String?
+  city          String?
+  state         String?
+  zipCode       String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  orders        Order[]
+  cart          CartItem[]
+  
+  @@index([email])
+  @@index([cnpj])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  products    Product[]
+  
+  @@index([slug])
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  description     String
+  shortDescription String?
+  image           String?
+  images          String[]
+  
+  // Pricing
+  priceB2C        Float
+  priceB2B        Float
+  
+  // Stock
+  stock           Int       @default(0)
+  minStock        Int       @default(10)
+  
+  // Product info
+  sku             String    @unique
+  barcode         String?
+  weight          Float?    // kg
+  unit            String    @default("UN") // UN, KG, CX, etc
+  
+  // Wholesale
+  minQuantityB2B  Int       @default(1)
+  
+  active          Boolean   @default(true)
+  featured        Boolean   @default(false)
+  
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id])
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  
+  @@index([slug])
+  @@index([categoryId])
+  @@index([featured])
+}
+
+model CartItem {
+  id          String    @id @default(cuid())
+  quantity    Int
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  status          OrderStatus @default(PENDING)
+  
+  // Totals
+  subtotal        Float
+  shipping        Float
+  discount        Float       @default(0)
+  total           Float
+  
+  // Shipping address
+  shippingStreet      String
+  shippingNumber      String
+  shippingComplement  String?
+  shippingNeighborhood String
+  shippingCity        String
+  shippingState       String
+  shippingZipCode     String
+  
+  // Payment
+  paymentMethod   String
+  paymentStatus   String      @default("pending")
+  
+  // Notes
+  notes           String?
+  
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  
+  items           OrderItem[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  quantity    Int
+  price       Float
+  subtotal    Float
+  
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([orderId])
+}
